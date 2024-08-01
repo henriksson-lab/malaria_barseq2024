@@ -1,3 +1,7 @@
+########## the general in-house viewer #################
+########## the general in-house viewer #################
+########## the general in-house viewer #################
+
 library(minpack.lm)
 library(ggplot2)
 library(stringr)
@@ -20,20 +24,6 @@ listpools <- c("cr_2023aug_p192","cr_2023aug_p24","cr_2023aug_p96","cr_2023jan_t
 listpools <- c("cr_2024march_half1","cr_2024march_p1","cr_2024march_p12","cr_2024march_p2")
 
 
-
-
-listpools_barseq <- c(
-  "barseq_minipool2",
-  "barseq_priming_Candidatepool1",
-  "barseq_priming_Candidatepool2",
-  "barseq_priming_barseqpool1",
-  "barseq_priming_barseqpool3",
-  "barseq_priming_barseqpool4",
-  "barseq_slowhires_2023dec",
-  "barseq_slowpool_1",
-  "barseq_slowpool_2"
-)
-
 listpools_crispr1 <- c(
   
   "cr_2023aug_p192",
@@ -43,17 +33,70 @@ listpools_crispr1 <- c(
 )
 
 
-listpools <- c(
-#  listpools_barseq,
-  #listpools_crispr1,
-
-  "cr_2023march_screen", #Needed for supplemental; hide in viewer later?
-
-  "cr_2024march_half1",
-  "cr_2024march_p1",
-  "cr_2024march_p12"
-  #"cr_2024march_p2"
+listpools_barseq <- c(
+  "EB_slowpool_staging_2024apr"
+  #"EB_slowpool_organs_2024apr", #impossible; no time in it
 )
+
+listpools_barseq1 <- c(
+  #?? how to relate?
+  "EB_barseq_slowpool_1",
+  "EB_barseq_slowpool_2",
+  
+  #Initial 4 pools
+  "EB_priming_barseqpool1",
+  "EB_priming_barseqpool2s_PCR1",
+  "EB_priming_barseqpool2s_PCR2",
+                 ## what about sanger_primed_barseq_PCR2_repeat    and sanger_primed_barseq_PCR1_repeat
+  "EB_priming_barseqpool3", 
+  "EB_priming_barseqpool4",
+
+  #Two biological replicates, picking from priming and sanger
+  "EB_priming_Candidatepool1",
+  "EB_priming_Candidatepool2",
+  
+  #Validation using deep sequencing
+  "EB_deepseq_barseqpool3",
+  
+  #The final pool, few mutants  -- why not in??
+  "slowhires_2023dec",
+
+
+  ########### these need to be worked out
+
+  #"sanger_primed_barseq_PCR2",
+  #"sanger_primed_barseq_PCR1",
+  #  "sanger_primed_barseq_PCR2_repeat", #need to work these two out   ... same as PCR2???
+  #  "sanger_primed_barseq_PCR2_repeat",
+  
+  "sanger_some_PCR1a",
+  "sanger_some_PCR1b",
+  
+  "sanger_some_PCR2a",
+  "sanger_some_PCR2b"
+
+  
+)
+
+listpools_barseq_sanger <- c(
+  "sanger_primed_barseq_PCR2",
+  "sanger_primed_barseq_PCR1",
+#  "sanger_primed_barseq_PCR2_repeat", #need to work these two out
+#  "sanger_primed_barseq_PCR2_repeat",
+  
+  "sanger_some_PCR1a",
+  "sanger_some_PCR1b",
+  
+  "sanger_some_PCR2a",
+  "sanger_some_PCR2b"
+)
+
+
+listpools <- c(
+  listpools_barseq1
+)
+
+
 
 timecourses <- list()
 all_grstats_per_grna <- list()
@@ -66,13 +109,36 @@ for(curpool in listpools){
   
   allpooldir <- "/corgi/otherdataset/ellenbushell/crispr_pools"
   pooldir <- file.path(allpooldir, curpool)
+  if(!file.exists(pooldir)){
+    print("Looking for barseq sample")
+    allpooldir <- "/corgi/otherdataset/ellenbushell/barseq_pools"
+    pooldir <- file.path(allpooldir, curpool)
+  }
+  
+  
   countfile <- file.path(pooldir,"counts.RDS")
+  countfile2 <- file.path(pooldir,"counts.v2.RDS")
+  
+  if(file.exists(countfile2)){
+    print("=== using v2 count file")
+    countfile <- countfile2
+  }
+  
+  
   samplemetafile <- file.path(pooldir,"sampleinfo.txt")
   controlmetafile <- file.path(pooldir,"list_control.csv")
   
-  #### Read sample metadata
+  #### Read sample metadata ------------------------------------------------------------ will this really work for barseq named samples?? rename poolSLOW_ST_3 to poolSLOW-ST-3
   samplemeta <- read.csv(samplemetafile, sep = "\t")[,1:2]
   colnames(samplemeta) <- c("sampleid","samplename")
+
+  if(any(duplicated(samplemeta$sampleid))){
+    print("duplicated sample IDs")
+    print(curpool)
+    error()
+  }
+  
+  
   samplemeta$day <- str_sub(str_split_fixed(samplemeta$samplename, "_",5)[,4],2)
   samplemeta$is_input <- str_count(samplemeta$samplename,"input")>0
   samplemeta$day <- as.integer(samplemeta$day)
@@ -90,7 +156,15 @@ for(curpool in listpools){
   ### Read count table
   counts <- readRDS(countfile)
   
-  #### Read info about the cloning
+  ### Check to genes duplicated
+  if(any(duplicated(rownames(counts)))){
+    error("Duplicated genes")
+    print(table(rownames(counts))[table(rownames(counts))>1])
+    
+  }
+  
+  
+  #### Read info about the cloning; also has information about class of gene
   cloningfile <- file.path(pooldir,"cloning.csv")
   if(file.exists(cloningfile)){
     print("Reading cloning.csv")
@@ -117,7 +191,7 @@ for(curpool in listpools){
   genes_dispensible <- allgeneconstructs$gene[allgeneconstructs$genecat=="Dispensable"]
   
   
-  ### Extract FIRST input
+  ### Extract FIRST input sample; can only show one
   if(sum(samplemeta$is_input)>0){
     print("Using input sample as coverage")
     input_sampleid <- samplemeta$sampleid[samplemeta$is_input][1]
@@ -381,6 +455,11 @@ for(curpool in listpools){
                 slope_sd <- thesummary$Sd[2]  #disagrees a fair bit with above
               }
               
+              
+              ### TODO average abundance
+              this_avg_abundance <- mean(y)
+              
+              
 
               fitted_gr[[paste(themouse, thegrna, thegeno, thepheno)]] <- data.frame(
                 mouse=themouse,
@@ -388,7 +467,8 @@ for(curpool in listpools){
                 phenotype=thepheno,
                 genotype=thegeno,
                 gr_sd=slope_sd,
-                gr_mean=slope_mean
+                gr_mean=slope_mean,
+                avg_abundance=this_avg_abundance
               )
               #print(paste("Worked",curstate))
             }, silent = FALSE) ## Ignore those we cannot fit
@@ -427,28 +507,19 @@ for(curpool in listpools){
   computeVar <- function(fitted_gr){
     
     ##### PER GRNA CONSTRUCT: Calculate FC vs control
-    grna_var <- sqldf::sqldf("select sum(gr_sd*gr_sd) as totalvar, count(gr_sd) as cnt, avg(gr_mean) as fc, grna from fitted_gr group by grna")
+    grna_var <- sqldf::sqldf("select sum(gr_sd*gr_sd) as totalvar, count(gr_sd) as cnt, avg(gr_mean) as fc, avg(avg_abundance) as avg_abundance, grna from fitted_gr group by grna")
     grna_var$sd <- sqrt(grna_var$totalvar/grna_var$cnt)
     grna_var$logp <- computeLogpFromVar(grna_var$fc,grna_var$sd)
     
     grna_var <- merge(grna_var,allgeneconstructs) #maybe an outer join later? TODO
     grna_var <- grna_var[order(grna_var$genecat, grna_var$fc),]
     all_grstats_per_grna[[curpool]] <- grna_var
-    
-    #p1 <- ggplot(grna_var, aes(fc, sd, label=grna, color=genecat)) + geom_point() + geom_text()
-    #p1
-    #ggsave(sprintf("/home/mahogny/ellen/grna volcano %s.pdf",curpool), width = 10, height = 10)
-    
+
     
     ##### PER gene: Calculate FC vs control
-    gene_var <- sqldf::sqldf("select sum(sd*sd) as totalvar, count(sd) as cnt, avg(fc) as fc, gene, genecat from grna_var group by gene")
+    gene_var <- sqldf::sqldf("select sum(sd*sd) as totalvar, count(sd) as cnt, avg(fc) as fc, avg(avg_abundance) as avg_abundance, gene, genecat from grna_var group by gene")
     gene_var$sd <- sqrt(gene_var$totalvar/gene_var$cnt)
     gene_var$logp <- computeLogpFromVar(gene_var$fc,gene_var$sd)
-    
-    #p1 <- ggplot(gene_var, aes(fc, sd, label=gene, color=genecat)) + geom_point() + geom_text()
-    #p1
-    #ggsave(plot = p1, sprintf("/home/mahogny/ellen/gene volcano %s.pdf",curpool), width = 10, height = 10)
-    
     
     list(
       grna_var=grna_var,
@@ -505,7 +576,7 @@ for(curpool in listpools){
   list_scatter <- list()
   for(i in 1:nrow(list_cond_compare)){
     if(list_cond_compare$cond1[i] %in% names(list_all_grstats) & list_cond_compare$cond2[i] %in% names(list_all_grstats)){
-      compname <- sprintf("%s -- %s",list_cond_compare$cond1[i],list_cond_compare$cond2[i])
+      compname <- sprintf("%s / %s",list_cond_compare$cond1[i],list_cond_compare$cond2[i])
       #compname <- sprintf("(%s) -- (%s)",list_cond_compare$cond1[i],list_cond_compare$cond2[i])
       print(compname)
       stat1 <- list_all_grstats[[list_cond_compare$cond1[i]]]
@@ -543,8 +614,6 @@ for(curpool in listpools){
   )
   
   list_samplemeta[[curpool]] <- samplemeta
-
-  
 }
   
 
@@ -554,5 +623,6 @@ saveRDS(all_grstats, file="/corgi/websites/malariascreenviewer/grstats.rds")
 saveRDS(timecourses, file="/corgi/websites/malariascreenviewer/timecourses.rds")
 saveRDS(list_samplemeta, file="/corgi/websites/malariascreenviewer/samplemeta.rds")
 saveRDS(all_coverage_stat, file="/corgi/websites/malariascreenviewer/coverage_stat.rds")
+
 
 

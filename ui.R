@@ -63,7 +63,7 @@ tab_grstats <- fluidPage(
             label = "Y-axis:",
             selectize = FALSE,
             multiple = FALSE,
-            choices = c("1/s.d.","-Log10 p, different from control genes"), 
+            choices = c("1/s.d.","Average abundance","-Log10 p, different from control genes"), 
             selected = NULL
           ),
           checkboxInput(
