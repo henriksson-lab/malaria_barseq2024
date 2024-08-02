@@ -305,13 +305,7 @@ server <- function(input, output, session) {
     if(grstats_colorby=="Genotype+Treatment"){
       grstats$colorby <- paste(grstats$genotype,grstats$primed)
     }
-    if(grstats_colorby=="Genetic construct"){
-      grstats$colorby <- paste(grstats$grna)
-    }
-    if(grstats_colorby=="Genotype+Treatment+Genetic construct"){
-      grstats$colorby <- paste(grstats$genotype,grstats$primed, grstats$grna)
-    }
-    
+
     ######## The actual plotting
     ggplotly(ggplot(grstats,aes(x=day,y=y, group=group, color=colorby, text=group)) + 
                geom_line()+
