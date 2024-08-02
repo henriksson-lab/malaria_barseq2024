@@ -394,12 +394,17 @@ store_count_file(read_count_file("counts_26080.csv"),"sanger_some_PCR2b")
 
 
 
-store_count_file_fixed <- function(dat, tofile){
+store_count_file_fixed <- function(dat, usemeta, tofile, rename_mice=FALSE){
   
   orig_name <- colnames(dat)
   
-  renaming_table <- read.csv(file.path("/corgi/otherdataset/ellenbushell/barseq_pools/sanger_all/fixedmeta/",paste0(tofile,".csv")), sep="\t")
+  renaming_table <- read.csv(file.path("/corgi/otherdataset/ellenbushell/barseq_pools/sanger_all/fixedmeta/",paste0(usemeta,".csv")), sep="\t")
 
+  if(rename_mice){
+    renaming_table$newid <- str_replace(renaming_table$newid,"_m1","_m3")
+    renaming_table$newid <- str_replace(renaming_table$newid,"_m2","_m4")
+  }
+  
   #Remove some samples
   print(colnames(dat))
   print(renaming_table)
@@ -433,28 +438,18 @@ store_count_file_fixed <- function(dat, tofile){
 #dat <- read_count_file("counts_25253.csv")
 #tofile <- "sanger_primed_barseq_PCR2"
 
-store_count_file_fixed(read_count_file("counts_25253.csv"),"sanger_primed_barseq_PCR2")
-store_count_file_fixed(read_count_file("counts_25302.csv"),"sanger_primed_barseq_PCR1")
-#store_count_file_fixed(read_count_file("counts_25792.csv"),"sanger_primed_barseq_PCR2_repeat") #was r1, now r2??   ####### ignore for now
-#store_count_file_fixed(read_count_file("counts_25800.csv"),"sanger_primed_barseq_PCR1_repeat") #both wrong
+store_count_file_fixed(read_count_file("counts_25302.csv"),"sanger_primed_barseq_PCR1",        "EB_priming_barseqpool2s_biorep1_PCR1a")
+store_count_file_fixed(read_count_file("counts_25253.csv"),"sanger_primed_barseq_PCR2",        "EB_priming_barseqpool2s_biorep1_PCR1b", rename_mice=TRUE) #concatenate these; 4 mice total
 
-store_count_file_fixed(read_count_file("counts_26059.csv"),"sanger_some_PCR1a")
-store_count_file_fixed(read_count_file("counts_26072.csv"),"sanger_some_PCR1b")
-store_count_file_fixed(read_count_file("counts_26073.csv"),"sanger_some_PCR2a")
-store_count_file_fixed(read_count_file("counts_26080.csv"),"sanger_some_PCR2b")
+store_count_file_fixed(read_count_file("counts_25792.csv"),"sanger_primed_barseq_PCR1_repeat", "EB_priming_barseqpool2s_biorep1_PCR2a") 
+store_count_file_fixed(read_count_file("counts_25800.csv"),"sanger_primed_barseq_PCR2_repeat", "EB_priming_barseqpool2s_biorep1_PCR2b", rename_mice=TRUE) #all of these should be precisely the same. 2m each?
 
 
+store_count_file_fixed(read_count_file("counts_26059.csv"),"sanger_some_PCR1a",                "EB_priming_barseqpool2s_biorep2_PCR1a")
+store_count_file_fixed(read_count_file("counts_26072.csv"),"sanger_some_PCR1b",                "EB_priming_barseqpool2s_biorep2_PCR1b") #concatenate these; two sep cond. 4 mice total
 
-#fucked up these two; rethink
-#counts_25792.csv  PbPbSTM145 - Prime barseq PCR2_repeat
-#counts_25800.csv  PbPbSTM144 - Prime barseq PCR1_repeat
-
-store_count_file(read_count_file("counts_25792.csv"),"sanger_primed_barseq_PCR2_repeat") 
-store_count_file(read_count_file("counts_25800.csv"),"sanger_primed_barseq_PCR1_repeat") 
-
-store_count_file_fixed(read_count_file("counts_25792.csv"),"sanger_primed_barseq_PCR2_repeat") 
-store_count_file_fixed(read_count_file("counts_25800.csv"),"sanger_primed_barseq_PCR1_repeat") 
-
+store_count_file_fixed(read_count_file("counts_26073.csv"),"sanger_some_PCR2a",                "EB_priming_barseqpool2s_biorep2_PCR2a") 
+store_count_file_fixed(read_count_file("counts_26080.csv"),"sanger_some_PCR2b",                "EB_priming_barseqpool2s_biorep2_PCR2b") #concatenate these; two sep cond. 4 mice total
 
 
 
@@ -467,14 +462,33 @@ store_count_file_fixed(read_count_file("counts_25800.csv"),"sanger_primed_barseq
 ################################
 
 
+library(reshape2)
 
 
-merge_straight <- function(count1, count2){
-  library(reshape2)
+concat_straight <- function(f1, f2){
+  count1 <- readRDS(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",f1,"counts.RDS"))
+  count2 <- readRDS(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",f2,"counts.RDS"))
   totc <- rbind(melt(as.matrix(count1)), melt(as.matrix(count2)))
   dat <- acast(totc, Var1~Var2, fill = 0)
   dat
 }
+
+sum_straight <- function(f1, f2){
+  count1 <- readRDS(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",f1,"counts.RDS"))
+  count2 <- readRDS(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",f2,"counts.RDS"))
+  totc <- rbind(melt(as.matrix(count1)), melt(as.matrix(count2)))
+  totc <- sqldf::sqldf("select Var1, Var2, sum(value) as value from totc group by Var1, Var2") #sum them up
+  dat <- acast(totc, Var1~Var2, fill = 0)
+  dat
+}
+
+sum_straight_from_c <- function(count1, count2){
+  totc <- rbind(melt(as.matrix(count1)), melt(as.matrix(count2)))
+  totc <- sqldf::sqldf("select Var1, Var2, sum(value) as value from totc group by Var1, Var2") #sum them up
+  dat <- acast(totc, Var1~Var2, fill = 0)
+  dat
+}
+
 
 store_straight <- function(dat, tofile){
   outdir <- file.path("/corgi/otherdataset/ellenbushell/barseq_pools/",tofile)
@@ -492,14 +506,60 @@ store_straight <- function(dat, tofile){
 }
 
 
+######
+###### biorep #1
+######
+
+
+###### These two PCRs of separate samples; make it into comparable libraries
 store_straight(
-  merge_straight(readRDS("/corgi/otherdataset/ellenbushell/barseq_pools/sanger_some_PCR1a/counts.RDS"), 
-                 readRDS("/corgi/otherdataset/ellenbushell/barseq_pools/sanger_some_PCR1b/counts.RDS")),
-  "EB_priming_barseqpool2s_PCR1")
+  concat_straight("EB_priming_barseqpool2s_biorep1_PCR1a","EB_priming_barseqpool2s_biorep1_PCR1b"),
+  "EB_priming_barseqpool2s_biorep1_PCR1")
+store_straight(
+  concat_straight("EB_priming_barseqpool2s_biorep1_PCR2a","EB_priming_barseqpool2s_biorep1_PCR2b"),
+  "EB_priming_barseqpool2s_biorep1_PCR2")
+
+###### PCR of the same thing, so can sum them up
+store_straight(
+  sum_straight("EB_priming_barseqpool2s_biorep1_PCR1","EB_priming_barseqpool2s_biorep1_PCR2"),
+  "EB_priming_barseqpool2s_biorep1")
+
+
+######
+###### biorep #2
+######
+
+###### These two PCRs of separate samples; make it into comparable libraries
+store_straight(
+  concat_straight("EB_priming_barseqpool2s_biorep2_PCR1a","EB_priming_barseqpool2s_biorep2_PCR1b"),
+  "EB_priming_barseqpool2s_biorep2_PCR1")
+store_straight(
+  concat_straight("EB_priming_barseqpool2s_biorep2_PCR2a","EB_priming_barseqpool2s_biorep2_PCR2b"),
+  "EB_priming_barseqpool2s_biorep2_PCR2")
+
+###### PCR of the same thing, so can sum them up
+store_straight(
+  sum_straight("EB_priming_barseqpool2s_biorep2_PCR1","EB_priming_barseqpool2s_biorep2_PCR2"),
+  "EB_priming_barseqpool2s_biorep2")
+
+######
+###### biorep #1+#2 --  so 8 mice!!?
+######
+
+concat_mice <- function(f1, f2){
+  count1 <- readRDS(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",f1,"counts.RDS"))
+  count2 <- readRDS(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",f2,"counts.RDS"))
+  
+  colnames(count2) <- str_replace(colnames(count2),"_m1","_m5")
+  colnames(count2) <- str_replace(colnames(count2),"_m2","_m6")
+  colnames(count2) <- str_replace(colnames(count2),"_m3","_m7")
+  colnames(count2) <- str_replace(colnames(count2),"_m4","_m8")
+  
+  totc <- rbind(melt(as.matrix(count1)), melt(as.matrix(count2)))
+  dat <- acast(totc, Var1~Var2, fill = 0)
+  dat
+}
 
 store_straight(
-  merge_straight(readRDS("/corgi/otherdataset/ellenbushell/barseq_pools/sanger_some_PCR2a/counts.RDS"), 
-                 readRDS("/corgi/otherdataset/ellenbushell/barseq_pools/sanger_some_PCR2b/counts.RDS")),
-  "EB_priming_barseqpool2s_PCR2")
-
-
+  concat_mice("EB_priming_barseqpool2s_biorep1","EB_priming_barseqpool2s_biorep2"),
+  "EB_priming_barseqpool2s")

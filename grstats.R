@@ -1,7 +1,3 @@
-########## the general in-house viewer #################
-########## the general in-house viewer #################
-########## the general in-house viewer #################
-
 library(minpack.lm)
 library(ggplot2)
 library(stringr)
@@ -14,40 +10,27 @@ library(umap)
 ################################################################################
 
 
-#listpools <- c("2023march_screen_noD4")
-listpools <- c("cr_2023march_screen")
-#listpools <- c("aug_p192","aug_p24","aug_p96")
-listpools <- c("barseq_slowhires_2023dec")
-listpools <- c("cr_2023aug_p192","cr_2023aug_p24","cr_2023aug_p96","cr_2023jan_tags", "cr_2023march_screen", "cr_2023march_screen_noD4")
+listpools <- c(
 
-#2024 march
-listpools <- c("cr_2024march_half1","cr_2024march_p1","cr_2024march_p12","cr_2024march_p2")
+  ### Separate sanger pools
+  "EB_priming_barseqpool2s_biorep1",
+  "EB_priming_barseqpool2s_biorep1_PCR1",
+  "EB_priming_barseqpool2s_biorep1_PCR1a",
+  "EB_priming_barseqpool2s_biorep1_PCR1b",
+  "EB_priming_barseqpool2s_biorep1_PCR2",
+  "EB_priming_barseqpool2s_biorep1_PCR2a",
+  "EB_priming_barseqpool2s_biorep1_PCR2b",
+  "EB_priming_barseqpool2s_biorep2",
+  "EB_priming_barseqpool2s_biorep2_PCR1",
+  "EB_priming_barseqpool2s_biorep2_PCR1a",
+  "EB_priming_barseqpool2s_biorep2_PCR1b",
+  "EB_priming_barseqpool2s_biorep2_PCR2",
+  "EB_priming_barseqpool2s_biorep2_PCR2a",
+  "EB_priming_barseqpool2s_biorep2_PCR2b",
 
-
-listpools_crispr1 <- c(
-  
-  "cr_2023aug_p192",
-  "cr_2023aug_p24",
-  "cr_2023jan_tags", 
-  "cr_2023march_screen"
-)
-
-
-listpools_barseq <- c(
-  "EB_slowpool_staging_2024apr"
-  #"EB_slowpool_organs_2024apr", #impossible; no time in it
-)
-
-listpools_barseq1 <- c(
-  #?? how to relate?
-  "EB_barseq_slowpool_1",
-  "EB_barseq_slowpool_2",
-  
   #Initial 4 pools
   "EB_priming_barseqpool1",
-  "EB_priming_barseqpool2s_PCR1",
-  "EB_priming_barseqpool2s_PCR2",
-                 ## what about sanger_primed_barseq_PCR2_repeat    and sanger_primed_barseq_PCR1_repeat
+  "EB_priming_barseqpool2s",
   "EB_priming_barseqpool3", 
   "EB_priming_barseqpool4",
 
@@ -60,40 +43,11 @@ listpools_barseq1 <- c(
   
   #The final pool, few mutants  -- why not in??
   "slowhires_2023dec",
-
-
-  ########### these need to be worked out
-
-  #"sanger_primed_barseq_PCR2",
-  #"sanger_primed_barseq_PCR1",
-  #  "sanger_primed_barseq_PCR2_repeat", #need to work these two out   ... same as PCR2???
-  #  "sanger_primed_barseq_PCR2_repeat",
   
-  "sanger_some_PCR1a",
-  "sanger_some_PCR1b",
-  
-  "sanger_some_PCR2a",
-  "sanger_some_PCR2b"
-
-  
-)
-
-listpools_barseq_sanger <- c(
-  "sanger_primed_barseq_PCR2",
-  "sanger_primed_barseq_PCR1",
-#  "sanger_primed_barseq_PCR2_repeat", #need to work these two out
-#  "sanger_primed_barseq_PCR2_repeat",
-  
-  "sanger_some_PCR1a",
-  "sanger_some_PCR1b",
-  
-  "sanger_some_PCR2a",
-  "sanger_some_PCR2b"
-)
-
-
-listpools <- c(
-  listpools_barseq1
+  ########## For another project likely  
+  "EB_barseq_slowpool_1",
+  "EB_barseq_slowpool_2",
+  "slowhires_2023dec"  #subset of above
 )
 
 
@@ -618,11 +572,10 @@ for(curpool in listpools){
   
 
 
-
-saveRDS(all_grstats, file="/corgi/websites/malariascreenviewer/grstats.rds")
-saveRDS(timecourses, file="/corgi/websites/malariascreenviewer/timecourses.rds")
-saveRDS(list_samplemeta, file="/corgi/websites/malariascreenviewer/samplemeta.rds")
-saveRDS(all_coverage_stat, file="/corgi/websites/malariascreenviewer/coverage_stat.rds")
+saveRDS(all_grstats, file="/corgi/websites/malaria_barseq2024/grstats.rds")
+saveRDS(timecourses, file="/corgi/websites/malaria_barseq2024/timecourses.rds")
+saveRDS(list_samplemeta, file="/corgi/websites/malaria_barseq2024/samplemeta.rds")
+saveRDS(all_coverage_stat, file="/corgi/websites/malaria_barseq2024/coverage_stat.rds")
 
 
 
