@@ -34,6 +34,7 @@ library(stringr)
 ######## Generate count matrices -- barseq, improved approximate matching ######
 ################################################################################
 
+listpools <- "EB_minipool2"
 
 listpools <- c(
   "EB_priming_Candidatepool1",
@@ -70,8 +71,20 @@ for(curpool in listpools){
   
   #Subset by the BCs expected here
   if(TRUE){
-    usedbc <- read.csv(bcfile,sep="\t")  ### why not here??
-    usedbc <- frank_bc[frank_bc$sgrna %in% usedbc$gene,]
+    usedbc <- read.csv(bcfile,sep="\t")$gene
+    
+    spikeins_always_included <- c( #ensure spike-ins always included
+      "PBANKA_030600",
+      "PBANKA_051500",
+      "PBANKA_103780",
+      "PBANKA_103440",
+      "PBANKA_140160",
+      "PBANKA_051490",
+      "PBANKA_110420"
+    )
+    usedbc <- unique(c(usedbc, spikeins_always_included))
+    
+    usedbc <- frank_bc[frank_bc$sgrna %in% usedbc,]
   } else {
     usedbc <- frank_bc
   }
@@ -140,9 +153,8 @@ for(curpool in listpools){
 
       ###################### Put together the two list of BCs, and count   
       print("Counting BCs")
-      bclist_aligned <- data.frame(bc=trimmed_bc)
       bclist <- bclist_direct
-      #bclist <- rbind(bclist_direct, bclist_aligned)
+      #bclist <- rbind(bclist_direct, data.frame(bc=trimmed_bc))
       bclist <- sqldf::sqldf("select count(bc) as cnt, bc from bclist group by bc order by cnt desc")
 
       

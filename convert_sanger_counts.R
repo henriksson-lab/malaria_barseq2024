@@ -438,11 +438,11 @@ store_count_file_fixed <- function(dat, usemeta, tofile, rename_mice=FALSE){
 #dat <- read_count_file("counts_25253.csv")
 #tofile <- "sanger_primed_barseq_PCR2"
 
-store_count_file_fixed(read_count_file("counts_25302.csv"),"sanger_primed_barseq_PCR1",        "EB_priming_barseqpool2s_biorep1_PCR1a")
-store_count_file_fixed(read_count_file("counts_25253.csv"),"sanger_primed_barseq_PCR2",        "EB_priming_barseqpool2s_biorep1_PCR1b", rename_mice=TRUE) #concatenate these; 4 mice total
+store_count_file_fixed(read_count_file("counts_25302.csv"),"sanger_primed_barseq_PCR1",        "EB_priming_barseqpool2s_biorep1_PCR1_seq1")
+store_count_file_fixed(read_count_file("counts_25253.csv"),"sanger_primed_barseq_PCR2",        "EB_priming_barseqpool2s_biorep1_PCR2_seq1") 
 
-store_count_file_fixed(read_count_file("counts_25792.csv"),"sanger_primed_barseq_PCR1_repeat", "EB_priming_barseqpool2s_biorep1_PCR2a") 
-store_count_file_fixed(read_count_file("counts_25800.csv"),"sanger_primed_barseq_PCR2_repeat", "EB_priming_barseqpool2s_biorep1_PCR2b", rename_mice=TRUE) #all of these should be precisely the same. 2m each?
+store_count_file_fixed(read_count_file("counts_25792.csv"),"sanger_primed_barseq_PCR1_repeat", "EB_priming_barseqpool2s_biorep1_PCR1_seq2") 
+store_count_file_fixed(read_count_file("counts_25800.csv"),"sanger_primed_barseq_PCR2_repeat", "EB_priming_barseqpool2s_biorep1_PCR2_seq2") 
 
 
 store_count_file_fixed(read_count_file("counts_26059.csv"),"sanger_some_PCR1a",                "EB_priming_barseqpool2s_biorep2_PCR1a")
@@ -511,18 +511,20 @@ store_straight <- function(dat, tofile){
 ######
 
 
-###### These two PCRs of separate samples; make it into comparable libraries
+###### Resequencing of the same library, so can sum these up
 store_straight(
-  concat_straight("EB_priming_barseqpool2s_biorep1_PCR1a","EB_priming_barseqpool2s_biorep1_PCR1b"),
+  sum_straight("EB_priming_barseqpool2s_biorep1_PCR1_seq1","EB_priming_barseqpool2s_biorep1_PCR1_seq2"),
   "EB_priming_barseqpool2s_biorep1_PCR1")
 store_straight(
-  concat_straight("EB_priming_barseqpool2s_biorep1_PCR2a","EB_priming_barseqpool2s_biorep1_PCR2b"),
+  sum_straight("EB_priming_barseqpool2s_biorep1_PCR2_seq1","EB_priming_barseqpool2s_biorep1_PCR2_seq2"),
   "EB_priming_barseqpool2s_biorep1_PCR2")
 
-###### PCR of the same thing, so can sum them up
+###### PCR of the same samples, so can sum these up
+
 store_straight(
   sum_straight("EB_priming_barseqpool2s_biorep1_PCR1","EB_priming_barseqpool2s_biorep1_PCR2"),
   "EB_priming_barseqpool2s_biorep1")
+
 
 
 ######

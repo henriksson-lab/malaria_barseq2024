@@ -126,13 +126,7 @@ tab_grstats <- fluidPage(
                   label = "Average across mice",
                   value = TRUE
                 ),
-                
-                checkboxInput(
-                  inputId = "grstats_avg_grna",
-                  label = "Average across genetic constructs",
-                  value = TRUE
-                ),
-  
+
                 checkboxInput(
                   inputId = "grstats_avg_genotype",
                   label = "Average across genotypes",

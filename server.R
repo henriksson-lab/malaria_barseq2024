@@ -39,31 +39,47 @@ server <- function(input, output, session) {
     current_pool <- input$samplemeta_pool
 
     samplemeta <- all_samplemeta[[current_pool]]
-    coverage_stat <- all_coverage_stat[[current_pool]]
+    input_stat <- all_input_stat[[current_pool]]
+    gdna_stat <- all_gdna_stat[[current_pool]]
 
     samplemeta$day <- sprintf("d%s", samplemeta$day)
-    p1 <- ggplot(samplemeta, aes(umap1,umap2,color=mouse_ref))+geom_point()
-    p2 <- ggplot(samplemeta, aes(umap1,umap2,color=day))+geom_point()
-    p3 <- ggplot(samplemeta, aes(umap1,umap2,color=is_input))+geom_point()
-    p4 <- ggplot(samplemeta, aes(umap1,umap2,color=genotype))+geom_point()
-    p5 <- ggplot(samplemeta, aes(umap1,umap2,color=primed))+geom_point()
-    p6 <- ggplot(samplemeta, aes(umap1,umap2,color=total_count))+geom_point()
+    
+    print(head(samplemeta))
+    samplemeta_no_input <- samplemeta[!samplemeta$is_input & !samplemeta$is_gdna,]
+    
+    p1 <- ggplot(samplemeta_no_input, aes(umap1,umap2,color=mouse_ref))+geom_point()
+    p2 <- ggplot(samplemeta_no_input, aes(umap1,umap2,color=day))+geom_point()
+    p3 <- ggplot()
+    p4 <- ggplot(samplemeta_no_input, aes(umap1,umap2,color=genotype))+geom_point()
+    p5 <- ggplot(samplemeta_no_input, aes(umap1,umap2,color=primed))+geom_point()
+    p6 <- ggplot(samplemeta_no_input, aes(umap1,umap2,color=total_count))+geom_point()
     ptot <- p1/p2|p3/p4|p5/p6 #|p7
 
-    #coverage_stat <- coverage_stat[!duplicated(coverage_stat),,drop=FALSE]
-    coverage_stat <- coverage_stat[order(coverage_stat$cnt, decreasing = TRUE),]
-    coverage_stat$grna <- factor(coverage_stat$grna, levels=coverage_stat$grna)
-    covstatplot <- ggplot(coverage_stat, aes(grna,cnt,color=genecat)) + geom_point() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    if(!is.null(input_stat)){
+      print("found input")
+      input_stat <- input_stat[order(input_stat$cnt, decreasing = TRUE),]
+      input_stat$grna <- factor(input_stat$grna, levels=input_stat$grna)
+      input_stat_plot <- ggplot(input_stat, aes(grna,cnt,color=genecat)) + 
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+        xlab("Gene in input") + ylab("Counts in input")
+    } else {
+      input_stat_plot <- ggplot()
+    }
 
-    #Natural order on genewiz column    
-    coverage_stat <- coverage_stat[naturalsort::naturalorder(coverage_stat$genewiz),]  #R install naturalsort
-    coverage_stat$genewiz <- factor(coverage_stat$genewiz, levels=naturalsort::naturalsort(unique(coverage_stat$genewiz)))
-    
-    wellplot <- ggplot(coverage_stat, aes(genewiz, ligationwell, color=log10(cnt))) + 
-      geom_point() + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    if(!is.null(gdna_stat)){
+      print("found gdna")
+      gdna_stat <- gdna_stat[order(gdna_stat$cnt, decreasing = TRUE),]
+      gdna_stat$grna <- factor(gdna_stat$grna, levels=gdna_stat$grna)
+      gdna_stat_plot <- ggplot(gdna_stat, aes(grna,cnt,color=genecat)) + 
+        geom_point() + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+        xlab("Gene in gDNA") + ylab("Counts in gDNA")
+    } else {
+      gdna_stat_plot <- ggplot()
+    }
 
-    ptot/(covstatplot|wellplot)
+    ptot/(input_stat_plot|gdna_stat_plot)
     
     
 
@@ -106,7 +122,7 @@ server <- function(input, output, session) {
     }
     
     toplot$genecat[toplot$genecat=="Slow"] <- "Slow growers"
-    toplot$genecat <- factor(toplot$genecat, levels=c("Dispensable","Essential","Slow growers","Other"))
+    toplot$genecat <- factor(toplot$genecat, levels=c("Dispensable","Essential","Slow growers","Other","Candidate"))
 
     if(nrow(toplot)>0){
       
@@ -121,19 +137,24 @@ server <- function(input, output, session) {
           geom_point(color="gray") + 
           geom_text() +
           xlab(paste("RGR",thecond)) + 
-          ylab(yname)
+          ylab(yname) +
+          scale_color_discrete(name = "PlasmoGEM Phenotype")
       } else {
         
         #For hover, add gene symbol
         toplot <- merge(toplot,geneinfo,all.x=TRUE)
         toplot$gene <- paste0(toplot$gene, "\nName: ", toplot$geneName, "\nDescription: ", toplot$geneDesc)
         
+        print(unique(toplot$genecat))
+        #toplot$genecat <- factor(toplot$genecat, levels=c("Dispensable","Essential","Slow growers","Other","Candidate"))
+        #note, Slow => Slow growers earlier here
+        print(toplot$genecat)
         
         theplot <- ggplot(toplot, aes(fc, y, label=gene, color=genecat)) + 
           geom_point() + 
           xlab(paste("RGR",thecond)) + 
           ylab(yname) +
-          scale_color_manual(values = c("chartreuse4", "red", "dodgerblue", "turquoise3")) #"Dispensible","Essential","Slow growers","Other"
+          scale_color_manual(values = c("chartreuse4", "red", "dodgerblue", "turquoise3","black"), name = "PlasmoGEM Phenotype") 
         #https://sape.inf.usi.ch/quick-reference/ggplot2/colour
       }
     } else {
@@ -143,6 +164,7 @@ server <- function(input, output, session) {
   })
   
   
+  ## Callback for clicking on the top-left plot
   observeEvent(
     eventExpr = event_data("plotly_click", source = "plot_grstats_volcano"),
     handlerExpr = {
@@ -184,36 +206,49 @@ server <- function(input, output, session) {
       data.frame()
     }
   }
-  
+
+  #Pick axes; use this to ensure consistency with point clicking  
+  get_current_scatter_xy <- function(toplot){
+    if(nrow(toplot)>0){
+      represent_as <- input$grstats_scatter_type 
+      if(represent_as=="RGR scatter plot"){
+        toplot$x <- toplot$fc1
+        toplot$y <- toplot$fc2
+      }
+      else {
+        toplot$x <- toplot$diff_fc
+        toplot$y <- toplot$diff_log_p
+      }
+    }
+    toplot
+  }
   
   
   output$plot_grstats_scatterplot <- renderPlotly({
     
-    current_pool <- input$grstats_pool
-    grstats <- all_grstats[[current_pool]]
-    thecond <- input$grstats_scatter
+    toplot <- get_current_scatter()
     
-    represent_as <- input$grstats_scatter_type  ##### possibly store xlab and ylab names
-    
-    
-    if(thecond %in% names(grstats$scatterplot)){
-      toplot <- grstats$scatterplot[[thecond]]
+    if(nrow(toplot)>0){
+      toplot <- get_current_scatter_xy(toplot)
+      thecond <- input$grstats_scatter
       thecond2 <- str_split_fixed(thecond," / ",2)  
       cond1 <- thecond2[1]
       cond2 <- thecond2[2]
       
-      
+      represent_as <- input$grstats_scatter_type 
       if(represent_as=="RGR scatter plot"){
-        fc_range <- range(c(toplot$fc1, toplot$fc2))
-        theplot <- ggplot(toplot, aes(fc1,fc2, label=gene, color=genedesc)) + 
+        fc_range <- range(c(toplot$x, toplot$y))
+        theplot <- ggplot(toplot, aes(x,y, label=gene, color=genedesc)) + 
           xlab(paste("RGR",cond1)) + 
           ylab(paste("RGR",cond2)) +
           xlim(fc_range[1], fc_range[2]) + 
-          ylim(fc_range[1], fc_range[2])
+          ylim(fc_range[1], fc_range[2]) +
+          scale_color_discrete(name = "PlasmoGEM Phenotype")
       } else {
-        theplot <- ggplot(toplot, aes(diff_fc, diff_log_p, label=gene, color=genedesc)) + 
+        theplot <- ggplot(toplot, aes(x, y, label=gene, color=genedesc)) + 
           xlab(paste("RGR",thecond)) + 
-          ylab(paste("-log10 pval",thecond))
+          ylab(paste("-log10 pval",thecond)) +
+          scale_color_discrete(name = "PlasmoGEM Phenotype")
       }
       
       if(input$grstats_show_gene_name){
@@ -221,8 +256,6 @@ server <- function(input, output, session) {
       } else {
         theplot <- theplot + geom_point()
       }
-      
-      
       
     } else {
       print("missing comparison cond")
@@ -233,14 +266,26 @@ server <- function(input, output, session) {
   
   
   
+  ## Callback for clicking on the top-right plot
   observeEvent(
     eventExpr = event_data("plotly_click", source = "plot_grstats_scatterplot"),
     handlerExpr = {
       event_data <- event_data("plotly_click", source = "plot_grstats_scatterplot")
-      #print(event_data)
-      clicked_gene <- get_current_scatter()$gene[event_data$pointNumber+1]  #plotly seems to do 0-indexing
-      updateSelectInput(session, "grstats_gene", selected = clicked_gene)
-      }
+
+      toplot <- get_current_scatter_xy(get_current_scatter())
+      if(nrow(toplot)>0){
+
+        toplot$dx <- (toplot$x - event_data$x)
+        toplot$dy <- (toplot$y - event_data$y)
+        toplot$dist <- toplot$dx**2 + toplot$dy**2
+        toplot <- toplot[order(toplot$dist, decreasing = FALSE),]
+        
+        clicked_gene <- toplot$gene[1] 
+        clicked_gene <- str_split_fixed(clicked_gene," ",3)[1] ## remove gene name in hover
+        updateSelectInput(session, "grstats_gene", selected = clicked_gene)
+
+      }      
+    }
   )  
   
   
@@ -257,13 +302,7 @@ server <- function(input, output, session) {
   ){
     
     ########### Average together based on user input
-    
-    if(input$grstats_avg_grna){
-      grstats <- sqldf::sqldf(
-        "select day, avg(y) as y, gene, primed, genotype, mouse_ref from grstats group by mouse_ref, gene, day, primed, genotype")
-      grstats$grna <- paste(grstats$gene,"*",sep="")
-    }
-    
+
     if(input$grstats_avg_mouse){
       grstats <- sqldf::sqldf(
         "select day, avg(y) as y, gene, grna, primed, genotype from grstats group by gene, grna, day, primed, genotype")
@@ -310,7 +349,9 @@ server <- function(input, output, session) {
     ggplotly(ggplot(grstats,aes(x=day,y=y, group=group, color=colorby, text=group)) + 
                geom_line()+
                xlab("Day")+
-               ggtitle(""), tooltip = c("x", "y", "color", "text", "group"))
+               ggtitle("") + 
+               scale_color_discrete(name = " "),
+             tooltip = c("x", "y", "color", "text", "group"))
     
   }
   
@@ -337,4 +378,12 @@ server <- function(input, output, session) {
   
     
 }
+
+
+
+
+
+
+#foo <- readRDS("/corgi/otherdataset/ellenbushell/barseq_pools/EB_priming_barseqpool1/counts.v2.RDS")
+#foo
 

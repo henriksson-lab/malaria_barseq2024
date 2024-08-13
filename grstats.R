@@ -5,6 +5,19 @@ library(umap)
 
 
 
+
+################################################################################
+## hack for minipool2
+
+
+#'/corgi/otherdataset/ellenbushell/barseq_pools/EB_minipool2/counts.RDS'
+
+#### TODO!!!
+
+
+
+
+
 ################################################################################
 ####################### Perform statistics on count tables #####################
 ################################################################################
@@ -12,37 +25,40 @@ library(umap)
 
 listpools <- c(
 
-  ### Separate sanger pools
+  ####### hires pool", each cloned individually
+  "EB_minipool2", 
+  
+  ####### Separate sanger pools
   "EB_priming_barseqpool2s_biorep1",
-  "EB_priming_barseqpool2s_biorep1_PCR1",
-  "EB_priming_barseqpool2s_biorep1_PCR1a",
-  "EB_priming_barseqpool2s_biorep1_PCR1b",
-  "EB_priming_barseqpool2s_biorep1_PCR2",
-  "EB_priming_barseqpool2s_biorep1_PCR2a",
-  "EB_priming_barseqpool2s_biorep1_PCR2b",
+  
+
+  #"EB_priming_barseqpool2s_biorep1_PCR1",   ## agreed that data is low quality, ignoring
+  #"EB_priming_barseqpool2s_biorep1_PCR1_seq1",
+  #"EB_priming_barseqpool2s_biorep1_PCR1_seq2",
+  #"EB_priming_barseqpool2s_biorep1_PCR2",
+  #"EB_priming_barseqpool2s_biorep1_PCR2_seq1",
+  #"EB_priming_barseqpool2s_biorep1_PCR2_seq2",
+  
   "EB_priming_barseqpool2s_biorep2",
   "EB_priming_barseqpool2s_biorep2_PCR1",
-  "EB_priming_barseqpool2s_biorep2_PCR1a",
-  "EB_priming_barseqpool2s_biorep2_PCR1b",
+  #"EB_priming_barseqpool2s_biorep2_PCR1a",
+  #"EB_priming_barseqpool2s_biorep2_PCR1b", #since PCR1 is a,b concatenated, can exlude these
   "EB_priming_barseqpool2s_biorep2_PCR2",
-  "EB_priming_barseqpool2s_biorep2_PCR2a",
-  "EB_priming_barseqpool2s_biorep2_PCR2b",
+  #"EB_priming_barseqpool2s_biorep2_PCR2a",
+  #"EB_priming_barseqpool2s_biorep2_PCR2b",  #since PCR2 is a,b concatenated, can exlude these
 
-  #Initial 4 pools
+  ####### Initial 4 pools
   "EB_priming_barseqpool1",
-  "EB_priming_barseqpool2s",
+  #"EB_priming_barseqpool2s",
   "EB_priming_barseqpool3", 
   "EB_priming_barseqpool4",
 
-  #Two biological replicates, picking from priming and sanger
+  ####### Two biological replicates, picking from priming and sanger
   "EB_priming_Candidatepool1",
   "EB_priming_Candidatepool2",
   
-  #Validation using deep sequencing
+  ####### Validation using deep sequencing
   "EB_deepseq_barseqpool3",
-  
-  #The final pool, few mutants  -- why not in??
-  "slowhires_2023dec",
   
   ########## For another project likely  
   "EB_barseq_slowpool_1",
@@ -50,15 +66,19 @@ listpools <- c(
   "slowhires_2023dec"  #subset of above
 )
 
+fname_gene_description <-"/corgi/websites/malaria_barseq2024/gene_description.csv"
+
+
 
 
 timecourses <- list()
 all_grstats_per_grna <- list()
 all_grstats <- list()
 list_samplemeta <- list()
-all_coverage_stat <- list()
+all_input_stat <- list()
+all_gdna_stat <- list()
 for(curpool in listpools){
-  
+
   print(curpool)
   
   allpooldir <- "/corgi/otherdataset/ellenbushell/crispr_pools"
@@ -69,32 +89,59 @@ for(curpool in listpools){
     pooldir <- file.path(allpooldir, curpool)
   }
   
-  
+  ### Read count table
   countfile <- file.path(pooldir,"counts.RDS")
   countfile2 <- file.path(pooldir,"counts.v2.RDS")
-  
   if(file.exists(countfile2)){
     print("=== using v2 count file")
     countfile <- countfile2
   }
+  counts <- readRDS(countfile)
   
   
   samplemetafile <- file.path(pooldir,"sampleinfo.txt")
   controlmetafile <- file.path(pooldir,"list_control.csv")
   
-  #### Read sample metadata ------------------------------------------------------------ will this really work for barseq named samples?? rename poolSLOW_ST_3 to poolSLOW-ST-3
+  #### Read sample metadata --- with new count table, maybe drop this? same content??
   samplemeta <- read.csv(samplemetafile, sep = "\t")[,1:2]
   colnames(samplemeta) <- c("sampleid","samplename")
 
-  if(any(duplicated(samplemeta$sampleid))){
-    print("duplicated sample IDs")
-    print(curpool)
-    error()
+  ### Read table for renaming and deleting of samples, from curation
+  renaming_table <- read.csv("/corgi/otherdataset/ellenbushell/barseq_pools/renaming.csv",sep="\t")
+  if(curpool %in% renaming_table$pool){
+    ### if not in table, skip this step
+    renaming_table <- renaming_table[renaming_table$pool==curpool,,drop=FALSE]
+    print(nrow(renaming_table))
+    print(dim(counts))
+    #renaming_table <- unique(renaming_table) #unclear how this happen!!
+    print(nrow(renaming_table))
+    rownames(renaming_table) <- renaming_table$oldid
+    renaming_table <- renaming_table[samplemeta$samplename,]
+    table(samplemeta$samplename)
+
+    #Delete samples
+    tokeep <- renaming_table$newid!=""
+    counts <- counts[,tokeep]
+    samplemeta <- samplemeta[tokeep,]
+    
+    #Renaming of samples that we kept
+    samplemeta$samplename <- renaming_table$newid[tokeep]
+    
+  } else {
+    print("No renaming will be performed")
   }
+
+  if(any(duplicated(samplemeta$sampleid))){
+    print(samplemeta$sampleid)
+    print(curpool)
+    stop("duplicated sample IDs")
+  }
+  
   
   
   samplemeta$day <- str_sub(str_split_fixed(samplemeta$samplename, "_",5)[,4],2)
   samplemeta$is_input <- str_count(samplemeta$samplename,"input")>0
+  samplemeta$is_gdna  <- str_count(samplemeta$samplename,"gDNA")>0
   samplemeta$day <- as.integer(samplemeta$day)
   samplemeta$mouse_ref <- str_split_fixed(samplemeta$samplename, "_",5)[,5]
   samplemeta$genotype <- str_split_fixed(samplemeta$samplename, "_",5)[,3] ##"wt"
@@ -107,10 +154,8 @@ for(curpool in listpools){
     samplemeta$primed[samplemeta$is_input] <- NA 
   }  
   
-  ### Read count table
-  counts <- readRDS(countfile)
   
-  ### Check to genes duplicated
+  ### Check if genes duplicated
   if(any(duplicated(rownames(counts)))){
     error("Duplicated genes")
     print(table(rownames(counts))[table(rownames(counts))>1])
@@ -122,7 +167,7 @@ for(curpool in listpools){
   cloningfile <- file.path(pooldir,"cloning.csv")
   if(file.exists(cloningfile)){
     print("Reading cloning.csv")
-    allgeneconstructs <- read.csv(cloningfile,sep="\t")  #read.csv("/corgi/otherdataset/ellenbushell/crispr_geneinfo.csv",sep="\t")
+    allgeneconstructs <- read.csv(cloningfile,sep="\t")  
     allgeneconstructs$gene <- str_split_fixed(allgeneconstructs$grna,"gRNA",2)[,1]
     allgeneconstructs$genecat[allgeneconstructs$genecat==""] <- "Other"
   } else {
@@ -136,9 +181,10 @@ for(curpool in listpools){
     allgeneconstructs$genewiz <- "NA"
     allgeneconstructs$ligationwell <- "NA"
     
-    geneinfotable <- read.csv("/corgi/otherdataset/ellenbushell/gene_description.csv",sep="\t")
+    geneinfotable <- read.csv(fname_gene_description,sep="\t")
     allgeneconstructs$genecat[allgeneconstructs$gene %in% geneinfotable$gene[geneinfotable$genedesc=="Dispensable"]] <- "Dispensable"
     allgeneconstructs$genecat[allgeneconstructs$gene %in% geneinfotable$gene[geneinfotable$genedesc=="Slow"]] <- "Slow"
+    allgeneconstructs$genecat[allgeneconstructs$gene %in% geneinfotable$gene[geneinfotable$genedesc=="Candidate"]] <- "Candidate"
   }
   
   grna_dispensible <- allgeneconstructs$grna[allgeneconstructs$genecat=="Dispensable"]
@@ -153,16 +199,30 @@ for(curpool in listpools){
       grna=rownames(counts),
       cnt=counts[,input_sampleid]
     )
-  } else {
-    print("Using average sample as coverage")
+    coverage_stat <- merge(allgeneconstructs,coverage_stat)
+    all_input_stat[[curpool]] <- coverage_stat
+  } #else {
+    #print("Using average sample as coverage")
+    #coverage_stat <- data.frame(
+    #  grna=rownames(counts),
+    #  cnt=rowSums(counts)
+    #)
+    #all_coverage_stat[[curpool]] <- NULL
+  #}
+
+  ### Extract FIRST input sample; can only show one
+  if(sum(samplemeta$is_gdna)>0){
+    print("Using gdna sample as coverage")
+    input_sampleid <- samplemeta$sampleid[samplemeta$is_gdna][1]
     coverage_stat <- data.frame(
       grna=rownames(counts),
-      cnt=rowSums(counts)
+      cnt=counts[,input_sampleid]
     )
+    coverage_stat <- merge(allgeneconstructs,coverage_stat)
+    all_gdna_stat[[curpool]] <- coverage_stat
   }
-  coverage_stat <- merge(allgeneconstructs,coverage_stat)
-  all_coverage_stat[[curpool]] <- coverage_stat
   
+    
   ### Make pseudocounts
   counts <- counts + 1
   
@@ -575,7 +635,8 @@ for(curpool in listpools){
 saveRDS(all_grstats, file="/corgi/websites/malaria_barseq2024/grstats.rds")
 saveRDS(timecourses, file="/corgi/websites/malaria_barseq2024/timecourses.rds")
 saveRDS(list_samplemeta, file="/corgi/websites/malaria_barseq2024/samplemeta.rds")
-saveRDS(all_coverage_stat, file="/corgi/websites/malaria_barseq2024/coverage_stat.rds")
+saveRDS(all_input_stat, file="/corgi/websites/malaria_barseq2024/input_stat.rds")
+saveRDS(all_gdna_stat, file="/corgi/websites/malaria_barseq2024/gDNA_stat.rds")
 
 
 

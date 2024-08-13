@@ -16,6 +16,7 @@ make_white_plot <- function(p){
 ################################################################################
 
 outdir <- "/corgi/otherdataset/ellenbushell/newplots_barseq/comparison_depth"
+dir.create(outdir)
 
 ############# 
 ############# Comparison on the level of counts -- look at a single sample (#1)
@@ -151,17 +152,22 @@ compare_two_delta <- function(pool1, pool2, cond){
 
 
 outdir <- "/corgi/otherdataset/ellenbushell/newplots_barseq/comparison_rounds"
+dir.create(outdir)
 for(pool1 in list_round1){
   for(pool2 in list_round2){
     print(paste(pool1,pool2))
     compare_two_delta(pool1,pool2, "P BL6 / P RAG1KO")
   }
 }
-for(pool2 in list_round2){
-  for(pool3 in list_round3){
-    print(paste(pool2,pool3))
-    compare_two_delta(pool2,pool3, "P BL6 / P RAG1KO")  #not present
+
+if(FALSE){
+  for(pool2 in list_round2){
+    for(pool3 in list_round3){
+      print(paste(pool2,pool3))
+      compare_two_delta(pool2,pool3, "P BL6 / P RAG1KO")  #not present
+    }
   }
+  
 }
 
 
@@ -172,10 +178,12 @@ for(pool2 in list_round2){
 
 list_biorep <- c(
   "EB_priming_barseqpool2s_biorep1",
-  "EB_priming_barseqpool2s_biorep2",
+  "EB_priming_barseqpool2s_biorep2"
 )
 
 outdir <- "/corgi/otherdataset/ellenbushell/newplots_barseq/comparison_biorep"
+dir.create(outdir)
+
 compare_two_delta(
   "EB_priming_barseqpool2s_biorep1",
   "EB_priming_barseqpool2s_biorep2", 
@@ -197,6 +205,8 @@ list_pcr2 <- c(
 )
 
 outdir <- "/corgi/otherdataset/ellenbushell/newplots_barseq/comparison_pcr"
+dir.create(outdir)
+
 compare_two_delta(
   "EB_priming_barseqpool2s_biorep1_PCR1",
   "EB_priming_barseqpool2s_biorep1_PCR2", 
@@ -219,6 +229,7 @@ all_coverage_stat <- readRDS("coverage_stat.rds")
 
 
 outdir <- "/corgi/otherdataset/ellenbushell/newplots_barseq/umaps"
+dir.create(outdir)
 
 
 library(stringr)
@@ -235,8 +246,11 @@ for(current_pool in list_pools){
   #coverage_stat <- all_coverage_stat[[current_pool]]
   #print(samplemeta)
   
+  
+  samplemeta <- samplemeta[!samplemeta$is_input,] #remove input
+  
   samplemeta$day <- sprintf("d%s", samplemeta$day)
-  samplemeta$day[samplemeta$day=="dNA"] <- "0"
+  #samplemeta$day[samplemeta$day=="dNA"] <- "0"
   p1 <- make_white_plot(ggplot(samplemeta, aes(umap1,umap2,color=mouse_ref))+geom_point())
   p2 <- make_white_plot(ggplot(samplemeta, aes(umap1,umap2,color=day))+geom_point())
   p3 <- make_white_plot(ggplot(samplemeta, aes(umap1,umap2,color=is_input))+geom_point())
@@ -250,9 +264,8 @@ for(current_pool in list_pools){
 
   p8 <- make_white_plot(ggplot(samplemeta, aes(umap1,umap2,label=samplename))+geom_point()+geom_text())
   
-  #TODO: why the odd separation in PCR? need plot with names
 
-  ggsave(plot = ptot, file.path(outdir, paste0("many ",current_pool,".pdf")),               width = 12,  height = 6)
+  ggsave(plot = ptot, file.path(outdir, paste0("many ",current_pool,".pdf")),               width = 12, height = 6)
   ggsave(plot = p7,   file.path(outdir, paste0("genotype_treatment ",current_pool,".pdf")), width = 3,  height = 3)
   ggsave(plot = p8,   file.path(outdir, paste0("name ",current_pool,".pdf")),               width = 20, height = 20)
   
@@ -264,3 +277,95 @@ for(current_pool in list_pools){
 
 
 
+
+
+
+
+
+
+################################################################################
+########### Make renaming table ################################################
+################################################################################
+
+
+
+
+if(FALSE){
+  
+  
+  
+  listpools <- c(
+    
+    ### Separate sanger pools
+    "EB_priming_barseqpool2s_biorep1_PCR1_seq1",
+    "EB_priming_barseqpool2s_biorep1_PCR1_seq2",
+    "EB_priming_barseqpool2s_biorep1_PCR2_seq1",
+    "EB_priming_barseqpool2s_biorep1_PCR2_seq2",
+    "EB_priming_barseqpool2s_biorep2_PCR1a",
+    "EB_priming_barseqpool2s_biorep2_PCR1b",
+    "EB_priming_barseqpool2s_biorep2_PCR2a",
+    "EB_priming_barseqpool2s_biorep2_PCR2b",
+    
+    #Initial 4 pools
+    "EB_priming_barseqpool1",
+    "EB_priming_barseqpool3", 
+    "EB_priming_barseqpool4",
+    
+    #Two biological replicates, picking from priming and sanger
+    "EB_priming_Candidatepool1",
+    "EB_priming_Candidatepool2",
+    
+    #Validation using deep sequencing
+    "EB_deepseq_barseqpool3",
+    
+    #The final pool, few mutants  -- why not in??
+    "slowhires_2023dec",
+    
+    ########## For another project likely  
+    "EB_barseq_slowpool_1",
+    "EB_barseq_slowpool_2",
+    "slowhires_2023dec"  #subset of above
+  )
+  alldat <- NULL
+  for(curpool in listpools){
+    dat <- read.csv(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",curpool,"sampleinfo.txt"),sep="\t")
+    dat <- data.frame(oldid=dat$User.ID, newid=dat$User.ID, pool=curpool)
+    alldat <- rbind(alldat, dat)
+    #write.csv(dat, file.path("/corgi/otherdataset/ellenbushell/barseq_pools/qc",paste0(curpool, ".csv")))
+  }
+  
+  write.csv(alldat, file.path("/corgi/otherdataset/ellenbushell/barseq_pools/qc/renaming.csv"), row.names = FALSE)
+  
+  
+}
+
+
+
+
+if(FALSE){
+  
+  
+  
+  listpools <- c(
+    
+    ### Separate sanger pools
+    "EB_priming_barseqpool2s_biorep1_PCR1_seq1",
+    "EB_priming_barseqpool2s_biorep1_PCR1_seq2",
+    "EB_priming_barseqpool2s_biorep1_PCR2_seq1",
+    "EB_priming_barseqpool2s_biorep1_PCR2_seq2",
+    "EB_priming_barseqpool2s_biorep2_PCR1a",
+    "EB_priming_barseqpool2s_biorep2_PCR1b",
+    "EB_priming_barseqpool2s_biorep2_PCR2a",
+    "EB_priming_barseqpool2s_biorep2_PCR2b"
+  )
+  alldat <- NULL
+  for(curpool in listpools){
+    dat <- read.csv(file.path("/corgi/otherdataset/ellenbushell/barseq_pools",curpool,"sampleinfo.txt"),sep="\t")
+    dat <- data.frame(oldid=dat$User.ID, newid=dat$User.ID, pool=curpool)
+    alldat <- rbind(alldat, dat)
+  }
+  
+  write.csv(alldat, file.path("/corgi/otherdataset/ellenbushell/barseq_pools/renaming2.csv"), row.names = FALSE)
+  
+  
+}

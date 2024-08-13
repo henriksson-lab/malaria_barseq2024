@@ -68,6 +68,7 @@ print("======= reading data to be cached in memory ================ ")
 all_samplemeta <- readRDS("samplemeta.rds")
 all_grstats <- readRDS("grstats.rds")
 all_timecourses <- readRDS("timecourses.rds")
-all_coverage_stat <- readRDS("coverage_stat.rds")
+all_input_stat <- readRDS("input_stat.rds")
+all_gdna_stat <- readRDS("gDNA_stat.rds")
 
 print("========== global done ================")
